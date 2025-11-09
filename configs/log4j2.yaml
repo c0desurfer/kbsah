@@ -1,0 +1,51 @@
+Configuration:
+  name: kbsah
+  status: WARN
+  packages: ch.c0desurfer.kbsah.ui.utils
+  Properties:
+    property:
+      - name: fileLayout
+        value: '%d{dd.MM.yyyy HH:mm:ss,SSS} %p - %m%n'
+      - name: consoleLayout
+        value: '[ %p ] %d{dd.MM.yyyy HH:mm:ss,SSS} %C/%M() [%t] %m%n'
+  Appenders:
+    Console:
+      name: Console
+      target: SYSTEM_OUT
+      PatternLayout:
+        pattern: '${consoleLayout}'
+    File:
+      name: File
+      fileName: logs/kbsah.log
+      PatternLayout:
+        pattern: '${fileLayout}'
+    TextAreaAppender:
+      name: TextAreaAppender
+      PatternLayout:
+        pattern: '${consoleLayout}'
+  Loggers:
+    Root:
+      level: debug
+      AppenderRef:
+        - ref: File
+        - ref: Console
+        - ref: TextAreaAppender
+    Logger:
+      - name: org.jboss.logging
+        level: error
+        additivity: false
+        AppenderRef:
+          - ref: File
+          - ref: Console
+      - name: org.apache.kafka
+        level: error
+        additivity: false
+        AppenderRef:
+          - ref: File
+          - ref: Console
+      - name: org.apache.commons.beanutils
+        level: error
+        additivity: false
+        AppenderRef:
+          - ref: File
+          - ref: Console
