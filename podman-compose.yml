@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  broker:
+    image: confluentinc/cp-kafka:8.0.0
+    hostname: broker
+    container_name: broker
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      # required env vars
+      CLUSTER_ID: "kbsah-cluster-1"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@broker:9093"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://broker:9092,SASL_PLAINTEXT://broker:29092"
+      KAFKA_LISTENERS: "PLAINTEXT://broker:9092,CONTROLLER://broker:9093,SASL_PLAINTEXT://broker:29092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT'
+
+      # SASL/SCRAM
+      KAFKA_SASL_ENABLED_MECHANISMS: "SCRAM-SHA-512"
+      KAFKA_LISTENER_NAME_SASL_PLAINTEXT_SASL_ENABLED_MECHANISMS: "SCRAM-SHA-512"
+      KAFKA_LISTENER_NAME_SASL_PLAINTEXT_SASL_MECHANISM_INTER_BROKER_PROTOCOL: "SCRAM-SHA-512"
+      KAFKA_SUPER_USERS: "User:admin"
+      KAFKA_LISTENER_NAME_SASL_PLAINTEXT_SCRAM_MECHANISM: "SCRAM-SHA-512"
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/jaas.conf"
+    volumes:
+      - ./jaas.conf:/etc/kafka/jaas.conf:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server broker:9092 || exit 1" ]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+  init-users:
+    image: confluentinc/cp-kafka:8.0.0
+    container_name: init-users
+    depends_on:
+      broker:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        echo "Waiting for Kafka..."
+        for i in {1..60}; do
+          kafka-broker-api-versions --bootstrap-server broker:9092 && break || sleep 2
+        done
+        echo "Creating SCRAM users..."
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-512=[password=admin-secret]'   --entity-type users --entity-name admin
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-512=[password=app-secret]'     --entity-type users --entity-name app
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-512=[password=ui-secret]'      --entity-type users --entity-name ui
+        echo "Done."
+    restart: "no"
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      broker:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "kbsah-cluster-1"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "broker:29092"
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: "SASL_PLAINTEXT"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: "SCRAM-SHA-512"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.scram.ScramLoginModule required username="ui" password="ui-secret";'
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/actuator/health" ]
+networks:
+  default:
+    name: kafka-net

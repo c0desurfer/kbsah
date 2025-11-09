@@ -53,5 +53,6 @@ replay_pid*
 .idea/**/out/
 .idea/**/build/
 
-# Ignore custom settings for run/debug configurations
+# ignore custom settings for run/debug configurations
 .idea/runConfigurations/
+/target/

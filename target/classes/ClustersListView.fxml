@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.scene.control.ListView?>
-<?import javafx.scene.layout.AnchorPane?>
-<ListView xmlns:fx="http://javafx.com/fxml/1" prefHeight="200.0" prefWidth="200.0" xmlns="http://javafx.com/javafx"
-          fx:controller="ch.c0desurfer.kbsah.ui.ClustersListView"
-          AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" fx:id="listView">
-</ListView>
